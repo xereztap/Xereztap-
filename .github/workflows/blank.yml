@@ -1,0 +1,43 @@
+name: Build XerezTap APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Android
+        uses: android-actions/setup-android@v3
+
+      - name: Descomprimir XerezTap
+        run: |
+          unzip -q XerezTap_CLOUD_BUILD.zip
+          ls -la
+          ls -la XerezTap_V2
+
+      - name: Instalar Gradle
+        run: |
+          curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle.zip
+
+      - name: Compilar APK
+        working-directory: XerezTap_V2
+        run: |
+          ../gradle-8.9/bin/gradle assembleDebug --no-daemon
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: XerezTap-APK
+          path: XerezTap_V2/app/build/outputs/apk/debug/app-debug.apk
