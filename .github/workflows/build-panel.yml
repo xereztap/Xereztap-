@@ -27,57 +27,59 @@ jobs:
       - name: Descomprimir proyecto del panel
         run: |
           unzip -q XerezTap_Panel_Control_V1.zip -d panel_source
-
-          echo "===== ARCHIVOS ====="
+          echo "===== PROYECTO ====="
           find panel_source -maxdepth 5 -type f | sort
 
       - name: Configurar compilación y conexión
         working-directory: panel_source
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          echo "===== CONFIGURANDO JAVA 17 ====="
 
-          # ------------------------------------------
-          # GRADLE
-          # ------------------------------------------
-          p = Path("app/build.gradle.kts")
-          text = p.read_text()
+          sed -i '/android {/a\
+              compileOptions {\
+                  sourceCompatibility = JavaVersion.VERSION_17\
+                  targetCompatibility = JavaVersion.VERSION_17\
+              }\
+\
+              kotlinOptions {\
+                  jvmTarget = "17"\
+              }' app/build.gradle.kts
 
-          if "sourceCompatibility = JavaVersion.VERSION_17" not in text:
-              text = text.replace(
-                  "android {",
-                  """android {
+          echo "===== ACTIVANDO MATERIAL 3 EXPERIMENTAL ====="
 
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
+          printf '\n\ntasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {\n    compilerOptions {\n        optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")\n    }\n}\n' >> app/build.gradle.kts
 
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-          """,
-                  1
-              )
+          echo "===== CAMBIANDO API A HTTP ====="
 
-          if "ExperimentalMaterial3Api" not in text:
-              text += """
+          find app/src/main -name "MainActivity.kt" -exec sed -i 's#https://xereztap.myartsonline.com/api.php#http://xereztap.myartsonline.com/api.php#g' {} \;
 
-          tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
-              compilerOptions {
-                  optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
-              }
-          }
-          """
+          echo "===== PERMITIENDO HTTP EN ANDROID ====="
 
-          p.write_text(text)
+          find app/src/main -name "AndroidManifest.xml" -exec sed -i 's#<application#<application android:usesCleartextTraffic="true"#' {} \;
 
-          # ------------------------------------------
-          # BUSCAR MAINACTIVITY
-          # ------------------------------------------
-          main_files = list(Path("app/src/main").rglob("MainActivity.kt"))
+          echo "===== COMPROBANDO CONFIGURACIÓN ====="
+          grep -R "xereztap.myartsonline.com/api.php" app/src/main || true
+          grep -R "usesCleartextTraffic" app/src/main || true
 
-          if not main_files:
-              raise SystemExit("ERROR: No se encontró MainActivity.kt")
+      - name: Instalar Gradle 8.9
+        run: |
+          curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle.zip
+          ./gradle-8.9/bin/gradle --version
 
-          main = main_files[0
+      - name: Compilar APK
+        working-directory: panel_source
+        run: |
+          ../gradle-8.9/bin/gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Comprobar APK
+        run: |
+          echo "===== APK GENERADO ====="
+          find panel_source -type f -name "*.apk" -print
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: XerezTap-Panel-APK
+          path: panel_source/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
