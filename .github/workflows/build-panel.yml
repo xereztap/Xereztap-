@@ -27,24 +27,23 @@ jobs:
       - name: Descomprimir proyecto del panel
         run: |
           unzip -q XerezTap_Panel_Control_V1.zip -d panel_source
-          echo "===== ARCHIVOS DEL PROYECTO ====="
-          find panel_source -maxdepth 4 -type f | sort
 
-      - name: Corregir configuración de compilación
+          echo "===== ARCHIVOS ====="
+          find panel_source -maxdepth 5 -type f | sort
+
+      - name: Configurar compilación y conexión
         working-directory: panel_source
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
+          # ------------------------------------------
+          # GRADLE
+          # ------------------------------------------
           p = Path("app/build.gradle.kts")
           text = p.read_text()
 
-          # ==========================================
-          # JAVA 17
-          # ==========================================
-
           if "sourceCompatibility = JavaVersion.VERSION_17" not in text:
-
               text = text.replace(
                   "android {",
                   """android {
@@ -61,15 +60,9 @@ jobs:
                   1
               )
 
-          # ==========================================
-          # MATERIAL 3 EXPERIMENTAL API
-          # ==========================================
-
           if "ExperimentalMaterial3Api" not in text:
-
               text += """
 
-          // Permitir APIs experimentales de Material 3
           tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
               compilerOptions {
                   optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
@@ -79,35 +72,12 @@ jobs:
 
           p.write_text(text)
 
-          print("")
-          print("==========================================")
-          print(" build.gradle.kts FINAL")
-          print("==========================================")
-          print(p.read_text())
-          print("==========================================")
-          PY
+          # ------------------------------------------
+          # BUSCAR MAINACTIVITY
+          # ------------------------------------------
+          main_files = list(Path("app/src/main").rglob("MainActivity.kt"))
 
-      - name: Instalar Gradle 8.9
-        run: |
-          curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
-          unzip -q gradle.zip
+          if not main_files:
+              raise SystemExit("ERROR: No se encontró MainActivity.kt")
 
-          echo "===== GRADLE INSTALADO ====="
-          ./gradle-8.9/bin/gradle --version
-
-      - name: Compilar APK
-        working-directory: panel_source
-        run: |
-          ../gradle-8.9/bin/gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Comprobar APK generado
-        run: |
-          echo "===== BUSCANDO APK ====="
-          find panel_source -type f -name "*.apk" -print
-
-      - name: Guardar APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: XerezTap-Panel-APK
-          path: panel_source/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          main = main_files[0
