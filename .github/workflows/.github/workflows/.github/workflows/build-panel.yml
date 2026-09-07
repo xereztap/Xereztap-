@@ -1,0 +1,45 @@
+name: Build XerezTap Panel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Android
+        uses: android-actions/setup-android@v3
+
+      - name: Descomprimir proyecto del panel
+        run: |
+          unzip -q XerezTap_Panel_Control_V1.zip -d panel_source
+          find panel_source -maxdepth 3 -type f | head -100
+
+      - name: Instalar Gradle
+        run: |
+          curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle.zip
+
+      - name: Compilar APK
+        working-directory: panel_source/XerezTap_Panel_Control_V1
+        run: |
+          ../../gradle-8.9/bin/gradle assembleDebug --no-daemon
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: XerezTap-Panel-APK
+          path: panel_source/XerezTap_Panel_Control_V1/app/build/outputs/apk/debug/app-debug.apk
