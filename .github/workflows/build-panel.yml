@@ -34,12 +34,12 @@ jobs:
           unzip -q gradle.zip
 
       - name: Compilar APK
-        working-directory: panel_source/XerezTap_Panel_Control_V1
-        run: |
-          ../../gradle-8.9/bin/gradle assembleDebug --no-daemon
+        working-directory: panel_source
+run: |
+  ../gradle-8.9/bin/gradle assembleDebug --no-daemon
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
         with:
           name: XerezTap-Panel-APK
-          path: panel_source/XerezTap_Panel_Control_V1/app/build/outputs/apk/debug/app-debug.apk
+          path: panel_source/app/build/outputs/apk/debug/app-debug.apk
