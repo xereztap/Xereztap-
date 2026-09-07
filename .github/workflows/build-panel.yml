@@ -25,7 +25,7 @@ jobs:
 
       - name: Descomprimir proyecto
         run: |
-          unzip -q XerezTap_Panel_FINAL_LOGIN_QR.zip -d panel_source
+          unzip -q XerezTap_Panel_FINAL_LOGIN_QR_CORREGIDO.zip -d panel_source
           test -f panel_source/settings.gradle.kts
           test -f panel_source/app/build.gradle.kts
           test -f panel_source/app/src/main/java/com/xereztap/panel/MainActivity.kt
