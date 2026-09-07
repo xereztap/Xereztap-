@@ -28,12 +28,13 @@ jobs:
           unzip -q XerezTap_Panel_Control_V1.zip -d panel_source
           find panel_source -maxdepth 3 -type f
 
-      - name: Corregir Java y Kotlin a JVM 17
+      - name: Corregir Java, Kotlin y APIs experimentales
         working-directory: panel_source
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
+          # Corregir JVM 17
           p = Path("app/build.gradle.kts")
           text = p.read_text()
 
@@ -55,8 +56,22 @@ jobs:
 
           p.write_text(text)
 
-          print("===== build.gradle.kts corregido =====")
+          # Autorizar APIs experimentales de Material3
+          kt = Path("app/src/main/java/com/xereztap/panel/MainActivity.kt")
+
+          if kt.exists():
+              text = kt.read_text()
+
+              if "@file:OptIn" not in text:
+                  text = '@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)\n\n' + text
+
+              kt.write_text(text)
+
+          print("===== build.gradle.kts =====")
           print(p.read_text())
+
+          print("===== MainActivity.kt =====")
+          print(kt.read_text())
           PY
 
       - name: Instalar Gradle
