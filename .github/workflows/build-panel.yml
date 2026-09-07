@@ -26,34 +26,41 @@ jobs:
       - name: Descomprimir proyecto
         run: |
           unzip -q XerezTap_Panel_Control_V1.zip -d panel_source
-          echo "Proyecto descomprimido"
+          test -f panel_source/settings.gradle.kts
+          test -f panel_source/app/build.gradle.kts
+          test -f panel_source/app/src/main/java/com/xereztap/panel/MainActivity.kt
+          echo "Proyecto correcto"
 
-      - name: Configurar Java 17
+      - name: Configurar compilación
         working-directory: panel_source
         run: |
           sed -i '/android {/a\    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }' app/build.gradle.kts
           sed -i '/android {/a\    kotlinOptions { jvmTarget = "17" }' app/build.gradle.kts
-
-      - name: Activar Material 3 experimental
-        working-directory: panel_source
-        run: |
-          echo 'kotlin.optIn=androidx.compose.material3.ExperimentalMaterial3Api' >> gradle.properties
+          sed -i '/^@Composable fun App()/i @OptIn(ExperimentalMaterial3Api::class)' app/src/main/java/com/xereztap/panel/MainActivity.kt
+          echo "Configuración aplicada"
 
       - name: Configurar conexión HTTP
         working-directory: panel_source
         run: |
           sed -i 's#https://xereztap.myartsonline.com/api.php#http://xereztap.myartsonline.com/api.php#g' $(find app/src/main -name MainActivity.kt)
           sed -i 's#<application#<application android:usesCleartextTraffic="true"#' $(find app/src/main -name AndroidManifest.xml)
+          echo "Conexión HTTP configurada"
 
       - name: Instalar Gradle 8.9
         run: |
           curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
           unzip -q gradle.zip
+          ./gradle-8.9/bin/gradle --version
 
       - name: Compilar APK
         working-directory: panel_source
         run: |
           ../gradle-8.9/bin/gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Comprobar APK generado
+        run: |
+          test -f panel_source/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh panel_source/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
