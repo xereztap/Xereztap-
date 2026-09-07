@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Descargar proyecto
         uses: actions/checkout@v4
 
@@ -24,58 +23,37 @@ jobs:
       - name: Preparar Android
         uses: android-actions/setup-android@v3
 
-      - name: Descomprimir proyecto del panel
+      - name: Descomprimir proyecto
         run: |
           unzip -q XerezTap_Panel_Control_V1.zip -d panel_source
-          echo "===== PROYECTO ====="
-          find panel_source -maxdepth 5 -type f | sort
+          echo "Proyecto descomprimido"
 
-      - name: Configurar compilación y conexión
+      - name: Configurar Java 17
         working-directory: panel_source
         run: |
-          echo "===== CONFIGURANDO JAVA 17 ====="
+          sed -i '/android {/a\    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }' app/build.gradle.kts
+          sed -i '/android {/a\    kotlinOptions { jvmTarget = "17" }' app/build.gradle.kts
 
-          sed -i '/android {/a\
-              compileOptions {\
-                  sourceCompatibility = JavaVersion.VERSION_17\
-                  targetCompatibility = JavaVersion.VERSION_17\
-              }\
-\
-              kotlinOptions {\
-                  jvmTarget = "17"\
-              }' app/build.gradle.kts
+      - name: Activar Material 3 experimental
+        working-directory: panel_source
+        run: |
+          echo 'kotlin.optIn=androidx.compose.material3.ExperimentalMaterial3Api' >> gradle.properties
 
-          echo "===== ACTIVANDO MATERIAL 3 EXPERIMENTAL ====="
-
-          printf '\n\ntasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {\n    compilerOptions {\n        optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")\n    }\n}\n' >> app/build.gradle.kts
-
-          echo "===== CAMBIANDO API A HTTP ====="
-
-          find app/src/main -name "MainActivity.kt" -exec sed -i 's#https://xereztap.myartsonline.com/api.php#http://xereztap.myartsonline.com/api.php#g' {} \;
-
-          echo "===== PERMITIENDO HTTP EN ANDROID ====="
-
-          find app/src/main -name "AndroidManifest.xml" -exec sed -i 's#<application#<application android:usesCleartextTraffic="true"#' {} \;
-
-          echo "===== COMPROBANDO CONFIGURACIÓN ====="
-          grep -R "xereztap.myartsonline.com/api.php" app/src/main || true
-          grep -R "usesCleartextTraffic" app/src/main || true
+      - name: Configurar conexión HTTP
+        working-directory: panel_source
+        run: |
+          sed -i 's#https://xereztap.myartsonline.com/api.php#http://xereztap.myartsonline.com/api.php#g' $(find app/src/main -name MainActivity.kt)
+          sed -i 's#<application#<application android:usesCleartextTraffic="true"#' $(find app/src/main -name AndroidManifest.xml)
 
       - name: Instalar Gradle 8.9
         run: |
           curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
           unzip -q gradle.zip
-          ./gradle-8.9/bin/gradle --version
 
       - name: Compilar APK
         working-directory: panel_source
         run: |
           ../gradle-8.9/bin/gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Comprobar APK
-        run: |
-          echo "===== APK GENERADO ====="
-          find panel_source -type f -name "*.apk" -print
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
