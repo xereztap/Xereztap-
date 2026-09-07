@@ -34,7 +34,10 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          # Corregir JVM 17
+          # ==============================
+          # CORREGIR JVM 17
+          # ==============================
+
           p = Path("app/build.gradle.kts")
           text = p.read_text()
 
@@ -56,21 +59,32 @@ jobs:
 
           p.write_text(text)
 
-          # Autorizar APIs experimentales de Material3
-          kt = Path("app/src/main/java/com/xereztap/panel/MainActivity.kt")
+          # ==============================
+          # CORREGIR MATERIAL3 EXPERIMENTAL
+          # ==============================
+
+          kt = Path(
+              "app/src/main/java/com/xereztap/panel/MainActivity.kt"
+          )
 
           if kt.exists():
               text = kt.read_text()
 
+              optin = (
+                  "@file:OptIn("
+                  "androidx.compose.material3.ExperimentalMaterial3Api::class"
+                  ")"
+              )
+
               if "@file:OptIn" not in text:
-                  text = '@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)\n\n' + text
+                  text = optin + "\n\n" + text
 
               kt.write_text(text)
 
-          print("===== build.gradle.kts =====")
+          print("===== build.gradle.kts CORREGIDO =====")
           print(p.read_text())
 
-          print("===== MainActivity.kt =====")
+          print("===== MainActivity.kt CORREGIDO =====")
           print(kt.read_text())
           PY
 
